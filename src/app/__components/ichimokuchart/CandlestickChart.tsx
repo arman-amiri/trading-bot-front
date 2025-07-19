@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 import {
   createChart,
+  CandlestickData,
   IChartApi,
   UTCTimestamp,
-  CandlestickData,
-  SeriesMarker,
+  LineStyle,
 } from "lightweight-charts";
 
 type Candle = {
@@ -19,8 +19,9 @@ type Candle = {
 };
 
 type DetectedPattern = {
-  type: "V" | "I" | "N";
-  index: number;
+  type: "V" | "N";
+  startIndex: number;
+  endIndex: number;
   candles: Candle[];
   fractalLevel: number;
 };
@@ -34,19 +35,13 @@ export default function CandlestickChart() {
 
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
-      height: 500,
-      layout: {
-        background: { color: "#1e1e1e" },
-        textColor: "#ffffff",
-      },
+      height: 600,
+      layout: { background: { color: "#1e1e1e" }, textColor: "#ffffff" },
       grid: {
         vertLines: { color: "#2f2f2f" },
         horzLines: { color: "#2f2f2f" },
       },
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
-      },
+      timeScale: { timeVisible: true },
     });
 
     chartRef.current = chart;
@@ -54,105 +49,105 @@ export default function CandlestickChart() {
     const series = chart.addCandlestickSeries({
       upColor: "#4ade80",
       downColor: "#f87171",
-      borderVisible: false,
       wickUpColor: "#4ade80",
       wickDownColor: "#f87171",
+      borderVisible: false,
     });
 
     const fetchData = async () => {
-      try {
-        const [candlesRes, patternsRes] = await Promise.all([
-          fetch(
-            "http://localhost:5000/kucoin/candles?symbol=BTC-USDT&interval=15min&limit=50"
-          ),
-          fetch("http://localhost:5000/ichimoku?fractalDepth=2"),
-        ]);
+      const [candlesRes, patternsRes] = await Promise.all([
+        fetch(
+          "http://localhost:5000/kucoin/candles?symbol=BTC-USDT&interval=15min&limit=100"
+        ),
+        fetch("http://localhost:5000/ichimoku?fractalDepth=0"),
+      ]);
 
-        const candlesJson = await candlesRes.json();
-        const patternsJson = await patternsRes.json();
+      const candlesJson: Candle[] = await candlesRes.json();
+      const patterns: DetectedPattern[] = await patternsRes.json();
 
-        if (!Array.isArray(candlesJson)) {
-          console.error("candles is not an array:", candlesJson);
-          return;
+      const sortedCandles = candlesJson
+        .sort((a, b) => a.timestamp - b.timestamp)
+        .filter((c, i, arr) => i === 0 || c.timestamp !== arr[i - 1].timestamp);
+
+      const data: CandlestickData[] = sortedCandles.map((c) => ({
+        time: c.timestamp as UTCTimestamp,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+
+      series.setData(data);
+
+      for (const pattern of patterns) {
+        const candles = pattern.candles;
+        if (candles.length < 3) continue;
+
+        const start = candles[0];
+        const mid = candles[Math.floor(candles.length / 2)];
+        const end = candles[candles.length - 1];
+
+        let middlePoint: Candle;
+
+        if (pattern.type === "V") {
+          middlePoint = candles.reduce((min, c) => (c.low < min.low ? c : min));
+        } else if (pattern.type === "N") {
+          middlePoint = candles.reduce((max, c) =>
+            c.high > max.high ? c : max
+          );
+        } else {
+          continue;
         }
 
-        // مرتب‌سازی و حذف داده‌های با timestamp تکراری
-        const seenTimestamps = new Set<number>();
+        const leg1 = chart.addLineSeries({
+          color: "yellow",
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+        });
 
-        const cleanedCandles: Candle[] = [...candlesJson]
-          .sort((a, b) => a.timestamp - b.timestamp)
-          .filter((c) => {
-            const ts = Math.floor(c.timestamp / 1000);
-            if (seenTimestamps.has(ts)) return false;
-            seenTimestamps.add(ts);
-            return true;
-          });
+        leg1.setData([
+          {
+            time: start.timestamp as UTCTimestamp,
+            value: pattern.type === "V" ? start.low : start.high,
+          },
+          {
+            time: middlePoint.timestamp as UTCTimestamp,
+            value: pattern.type === "V" ? middlePoint.low : middlePoint.high,
+          },
+        ]);
 
-        console.log(
-          cleanedCandles.map((c) => ({
-            time: Math.floor(c.timestamp / 1000),
-            raw: c.timestamp,
-          })),
-          "fff"
-        );
+        const leg2 = chart.addLineSeries({
+          color: "yellow",
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+        });
 
-        const data: CandlestickData[] = cleanedCandles.map((c) => ({
-          // time: Math.floor(c.timestamp / 1000) as UTCTimestamp,
-          time: c.timestamp as UTCTimestamp,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-        }));
-
-        series.setData(data);
-
-        const patterns: DetectedPattern[] = Array.isArray(patternsJson)
-          ? patternsJson
-          : [];
-
-        const markers: SeriesMarker<UTCTimestamp>[] = patterns
-          .filter((p) => p.index >= 0 && p.index < cleanedCandles.length)
-          .map((p) => {
-            const candle = cleanedCandles[p.index];
-            return {
-              time: Math.floor(candle.timestamp / 1000) as UTCTimestamp,
-              position: "aboveBar",
-              color:
-                p.type === "V" ? "red" : p.type === "I" ? "blue" : "orange",
-              shape: "arrowDown",
-              text: p.type,
-            };
-          });
-
-        // مرتب‌سازی markers
-        const sortedMarkers = markers.sort((a, b) => a.time - b.time);
-        series.setMarkers(sortedMarkers);
-      } catch (error) {
-        console.error("خطا در دریافت داده:", error);
+        leg2.setData([
+          {
+            time: middlePoint.timestamp as UTCTimestamp,
+            value: pattern.type === "V" ? middlePoint.low : middlePoint.high,
+          },
+          {
+            time: end.timestamp as UTCTimestamp,
+            value: pattern.type === "V" ? end.low : end.high,
+          },
+        ]);
       }
     };
 
     fetchData();
 
-    const handleResize = () => {
-      chart.applyOptions({
-        width: containerRef.current!.clientWidth,
-      });
-    };
+    window.addEventListener("resize", () => {
+      chart.applyOptions({ width: containerRef.current!.clientWidth });
+    });
 
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      chart.remove();
-      window.removeEventListener("resize", handleResize);
-    };
+    return () => chart.remove();
   }, []);
 
   return (
     <div className="w-full bg-gray-900 p-4 rounded-xl shadow-xl mt-10">
       <h2 className="text-white text-xl font-bold mb-2">نمودار BTC/USDT</h2>
-      <div ref={containerRef} className="w-full min-h-[700px] h-[500px]" />
+      <div ref={containerRef} className="w-full min-h-[700px] h-[600px]" />
     </div>
   );
 }
