@@ -57,7 +57,7 @@ export default function CandlestickChart() {
     const fetchData = async () => {
       const [candlesRes, patternsRes] = await Promise.all([
         fetch(
-          "http://localhost:5000/kucoin/candles?symbol=BTC-USDT&interval=15min&limit=100"
+          "http://localhost:5000/kucoin/candles?symbol=BTC-USDT&interval=15min&limit=300"
         ),
         fetch("http://localhost:5000/ichimoku?fractalDepth=0"),
       ]);
@@ -84,7 +84,7 @@ export default function CandlestickChart() {
         if (candles.length < 3) continue;
 
         const start = candles[0];
-        const mid = candles[Math.floor(candles.length / 2)];
+        // const mid = candles[Math.floor(candles.length / 2)];
         const end = candles[candles.length - 1];
 
         let middlePoint: Candle;

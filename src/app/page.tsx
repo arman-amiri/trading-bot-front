@@ -15,6 +15,24 @@ export default function Home() {
       >
         مشاهده نمودار کندل ها براساس الگوی ایچیموکو در نمودار candlestick
       </Link>
+      <Link
+        href="ichimoku/zikzag"
+        className="bg-blue-600 p-4 rounded-2xl text-white h-max w-max"
+      >
+        zikzag{" "}
+      </Link>
+      <Link
+        href="ichimoku/cycle"
+        className="bg-blue-600 p-4 rounded-2xl text-white h-max w-max"
+      >
+        cycle{" "}
+      </Link>
+      <Link
+        href="ichimoku/ad"
+        className="bg-blue-600 p-4 rounded-2xl text-white h-max w-max"
+      >
+        ad{" "}
+      </Link>
     </div>
   );
 }
