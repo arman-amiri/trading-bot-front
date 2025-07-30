@@ -99,18 +99,58 @@ export default function AD() {
             position: "belowBar",
             color: "#38bdf8",
             shape: "circle",
-            text: "D",
+            text: "A",
           },
           {
             time: Atime,
             position: "aboveBar",
             color: "#f87171",
             shape: "circle",
-            text: "A",
+            text: "D",
           },
         ];
 
         candleSeries.setMarkers(markers);
+
+        // رسم مستطیل
+
+        const highY = Math.max(A.high, D.high);
+        const lowY = Math.min(A.low, D.low);
+
+        const leftTime = Math.min(Atime, Dtime);
+        const rightTime = Math.max(Atime, Dtime);
+
+        const commonStyle = {
+          color: "#facc15",
+          lineWidth: 2,
+          priceLineVisible: false,
+          crossHairMarkerVisible: false,
+          lineStyle: 0, // solid
+        };
+
+        // بالا (خط افقی بالا)
+        chart.addLineSeries(commonStyle).setData([
+          { time: leftTime, value: highY },
+          { time: rightTime, value: highY },
+        ]);
+
+        // پایین (خط افقی پایین)
+        chart.addLineSeries(commonStyle).setData([
+          { time: leftTime, value: lowY },
+          { time: rightTime, value: lowY },
+        ]);
+
+        // چپ (خط عمودی چپ)
+        chart.addLineSeries(commonStyle).setData([
+          { time: Atime, value: lowY },
+          { time: Atime, value: highY },
+        ]);
+
+        // راست (خط عمودی راست)
+        chart.addLineSeries(commonStyle).setData([
+          { time: Dtime, value: lowY },
+          { time: Dtime, value: highY },
+        ]);
       } catch (error) {
         console.error("❌ خطا در دریافت یا پردازش داده‌ها:", error);
       }
@@ -134,7 +174,7 @@ export default function AD() {
   return (
     <div className="w-full bg-gray-900 p-4 rounded-xl shadow-xl mt-10">
       <h2 className="text-white text-xl font-bold mb-4">
-        نمودار BTC/USDT + نقاط A و D
+        نمودار BTC/USDT + نقاط A و D و مستطیل
       </h2>
       <div ref={containerRef} className="w-full min-h-[600px] h-[600px]" />
     </div>
