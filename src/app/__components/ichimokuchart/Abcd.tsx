@@ -59,12 +59,35 @@ export default function ABCD() {
         ]);
 
         const candlesJson: Candle[] = await candlesRes.json();
-        const { A, B, C, D } = await adPointsRes.json();
 
-        if (!A || !B || !C || !D) {
-          console.warn("❗ یکی از نقاط A, B, C, D موجود نیست:", { A, B, C, D });
+        // اینجا جواب رو به صورت رشته یا شیء بررسی می‌کنیم که pattern وجود داره یا نه
+        const adPointsData = await adPointsRes.json();
+        console.log(adPointsData, "adPointsData");
+
+        // اگر جواب «Pattern not found» بود یا یکی از نقاط موجود نبود، فقط کندل‌ها را نمایش بده و مارکر و خط نذار
+        if (!adPointsData || adPointsData.message === "Pattern not found") {
+          console.warn("❗ نقاط A, B, C یا D موجود نیستند یا الگو یافت نشد");
+
+          // فقط کندل‌ها را ست کن
+          const candleData: CandlestickData[] = candlesJson.map((c) => ({
+            time: Math.floor(c.timestamp / 100) as UTCTimestamp,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          }));
+          console.log(candleData, "candleData");
+          candleSeries.setData(candleData);
+
+          // اگه قبلاً خطوط یا مارکری اضافه شده بودن حذف‌شون کن
+          // چون اینجا تازه chart ساختیم و فقط یک candleSeries داریم و هنوز خطوط اضافه نکردیم
+          // پس کاری لازم نیست انجام بدیم
+
           return;
         }
+
+        // اگر همه نقاط وجود داشتند، ادامه بده
+        const { A, B, C, D } = adPointsData;
 
         const uniqueTimeMap = new Map<UTCTimestamp, Candle>();
         candlesJson.forEach((c) => {
