@@ -1,10 +1,10 @@
-import AD from "@/app/__components/ichimokuchart/Ad";
+import ABCD from "@/app/__components/ichimokuchart/Abcd";
 
 const AdPage = () => {
   return (
     <>
       <div className="bg-black h-screen w-full">
-        <AD />
+        <ABCD />
       </div>
     </>
   );

@@ -18,7 +18,7 @@ type Candle = {
   volume: number;
 };
 
-export default function AD() {
+export default function ABCD() {
   const chartRef = useRef<IChartApi | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -55,18 +55,16 @@ export default function AD() {
       try {
         const [candlesRes, adPointsRes] = await Promise.all([
           fetch("http://localhost:5000/kucoin/candles"),
-          fetch("http://localhost:5000/ichimoku/pattern-78"),
+          fetch("http://localhost:5000/ichimoku/abcde-a-top-2-1"),
         ]);
 
         const candlesJson: Candle[] = await candlesRes.json();
-        const adPoints = await adPointsRes.json();
+        const { A, B, C, D } = await adPointsRes.json();
 
-        if (!adPoints.A || !adPoints.D) {
-          console.warn("❗ نقاط A یا D در پاسخ API وجود ندارند:", adPoints);
+        if (!A || !B || !C || !D) {
+          console.warn("❗ یکی از نقاط A, B, C, D موجود نیست:", { A, B, C, D });
           return;
         }
-
-        const { A, D }: { A: Candle; D: Candle } = adPoints;
 
         const uniqueTimeMap = new Map<UTCTimestamp, Candle>();
         candlesJson.forEach((c) => {
@@ -90,66 +88,58 @@ export default function AD() {
 
         candleSeries.setData(candleData);
 
-        const Dtime = Math.floor(D.timestamp / 1000) as UTCTimestamp;
         const Atime = Math.floor(A.timestamp / 1000) as UTCTimestamp;
+        const Btime = Math.floor(B.timestamp / 1000) as UTCTimestamp;
+        const Ctime = Math.floor(C.timestamp / 1000) as UTCTimestamp;
+        const Dtime = Math.floor(D.timestamp / 1000) as UTCTimestamp;
 
+        // اضافه کردن Markers برای نقاط A, B, C, D
         const markers: SeriesMarker<UTCTimestamp>[] = [
-          {
-            time: Dtime,
-            position: "belowBar",
-            color: "#38bdf8",
-            shape: "circle",
-            text: "A",
-          },
           {
             time: Atime,
             position: "aboveBar",
-            color: "#f87171",
-            shape: "circle",
+            color: "#f59e0b",
+            shape: "arrowDown",
+            text: "A",
+          },
+          {
+            time: Btime,
+            position: "belowBar",
+            color: "#10b981",
+            shape: "arrowUp",
+            text: "B",
+          },
+          {
+            time: Ctime,
+            position: "aboveBar",
+            color: "#3b82f6",
+            shape: "arrowDown",
+            text: "C",
+          },
+          {
+            time: Dtime,
+            position: "belowBar",
+            color: "#ef4444",
+            shape: "arrowUp",
             text: "D",
           },
         ];
 
         candleSeries.setMarkers(markers);
 
-        // رسم مستطیل
-
-        const highY = Math.max(A.high, D.high);
-        const lowY = Math.min(A.low, D.low);
-
-        const leftTime = Math.min(Atime, Dtime);
-        const rightTime = Math.max(Atime, Dtime);
-
-        const commonStyle = {
+        // رسم خطوط اتصال A → B → C → D
+        const pathSeries = chart.addLineSeries({
           color: "#facc15",
           lineWidth: 2,
           priceLineVisible: false,
           crossHairMarkerVisible: false,
-          lineStyle: 0, // solid
-        };
+        });
 
-        // بالا (خط افقی بالا)
-        chart.addLineSeries(commonStyle).setData([
-          { time: leftTime, value: highY },
-          { time: rightTime, value: highY },
-        ]);
-
-        // پایین (خط افقی پایین)
-        chart.addLineSeries(commonStyle).setData([
-          { time: leftTime, value: lowY },
-          { time: rightTime, value: lowY },
-        ]);
-
-        // چپ (خط عمودی چپ)
-        chart.addLineSeries(commonStyle).setData([
-          { time: Atime, value: lowY },
-          { time: Atime, value: highY },
-        ]);
-
-        // راست (خط عمودی راست)
-        chart.addLineSeries(commonStyle).setData([
-          { time: Dtime, value: lowY },
-          { time: Dtime, value: highY },
+        pathSeries.setData([
+          { time: Atime, value: A.high },
+          { time: Btime, value: B.low },
+          { time: Ctime, value: C.high },
+          { time: Dtime, value: D.low },
         ]);
       } catch (error) {
         console.error("❌ خطا در دریافت یا پردازش داده‌ها:", error);
@@ -174,7 +164,7 @@ export default function AD() {
   return (
     <div className="w-full bg-gray-900 p-4 rounded-xl shadow-xl mt-10">
       <h2 className="text-white text-xl font-bold mb-4">
-        نمودار BTC/USDT + نقاط A و D و مستطیل
+        نمودار BTC/USDT + نقاط A, B, C, D و خطوط اتصال
       </h2>
       <div ref={containerRef} className="w-full min-h-[600px] h-[600px]" />
     </div>

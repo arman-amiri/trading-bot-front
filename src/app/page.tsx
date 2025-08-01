@@ -28,10 +28,10 @@ export default function Home() {
         cycle{" "}
       </Link>
       <Link
-        href="ichimoku/ad"
+        href="ichimoku/abcd"
         className="bg-blue-600 p-4 rounded-2xl text-white h-max w-max"
       >
-        ad{" "}
+        abcd{" "}
       </Link>
     </div>
   );
